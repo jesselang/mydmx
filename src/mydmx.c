@@ -54,21 +54,12 @@ struct usb_mydmx {
 	struct usb_interface	*interface;		/* the interface for this device */
 	struct semaphore	limit_sem;		/* limiting the number of writes in progress */
 	struct usb_anchor	submitted;		/* in case we need to retract our submissions */
-	struct urb		*bulk_in_urb;		/* the urb to read data with */
-	unsigned char           *bulk_in_buffer;	/* the buffer to receive data */
-	size_t			bulk_in_size;		/* the size of the receive buffer */
-	size_t			bulk_in_filled;		/* number of bytes in the buffer */
-	size_t			bulk_in_copied;		/* already copied to user space */
-	__u8			bulk_in_endpointAddr;	/* the address of the bulk in endpoint */
 	__u8			bulk_out_endpointAddr;	/* the address of the bulk out endpoint */
 	int			errors;			/* the last request tanked */
 	int			open_count;		/* count the number of openers */
-	bool			ongoing_read;		/* a read is going on */
-	bool			processed_urb;		/* indicates we haven't processed the urb */
 	spinlock_t		err_lock;		/* lock for errors */
 	struct kref		kref;
 	struct mutex		io_mutex;		/* synchronize I/O with disconnect */
-	struct completion	bulk_in_completion;	/* to wait for an ongoing read */
 };
 #define to_mydmx_dev(d) container_of(d, struct usb_mydmx, kref)
 
@@ -79,9 +70,7 @@ static void mydmx_delete(struct kref *kref)
 {
 	struct usb_mydmx *dev = to_mydmx_dev(kref);
 
-	usb_free_urb(dev->bulk_in_urb);
 	usb_put_dev(dev->udev);
-	kfree(dev->bulk_in_buffer);
 	kfree(dev);
 }
 
@@ -342,7 +331,6 @@ static int mydmx_probe(struct usb_interface *interface,
 	struct usb_mydmx *dev;
 	struct usb_host_interface *iface_desc;
 	struct usb_endpoint_descriptor *endpoint;
-	size_t buffer_size;
 	int i;
 	int retval = -ENOMEM;
 
@@ -357,7 +345,6 @@ static int mydmx_probe(struct usb_interface *interface,
 	mutex_init(&dev->io_mutex);
 	spin_lock_init(&dev->err_lock);
 	init_usb_anchor(&dev->submitted);
-	init_completion(&dev->bulk_in_completion);
 
 	dev->udev = usb_get_dev(interface_to_usbdev(interface));
 	dev->interface = interface;
@@ -368,32 +355,14 @@ static int mydmx_probe(struct usb_interface *interface,
 	for (i = 0; i < iface_desc->desc.bNumEndpoints; ++i) {
 		endpoint = &iface_desc->endpoint[i].desc;
 
-		if (!dev->bulk_in_endpointAddr &&
-		    usb_endpoint_is_bulk_in(endpoint)) {
-			/* we found a bulk in endpoint */
-			buffer_size = usb_endpoint_maxp(endpoint);
-			dev->bulk_in_size = buffer_size;
-			dev->bulk_in_endpointAddr = endpoint->bEndpointAddress;
-			dev->bulk_in_buffer = kmalloc(buffer_size, GFP_KERNEL);
-			if (!dev->bulk_in_buffer) {
-				err("Could not allocate bulk_in_buffer");
-				goto error;
-			}
-			dev->bulk_in_urb = usb_alloc_urb(0, GFP_KERNEL);
-			if (!dev->bulk_in_urb) {
-				err("Could not allocate bulk_in_urb");
-				goto error;
-			}
-		}
-
 		if (!dev->bulk_out_endpointAddr &&
 		    usb_endpoint_is_bulk_out(endpoint)) {
 			/* we found a bulk out endpoint */
 			dev->bulk_out_endpointAddr = endpoint->bEndpointAddress;
 		}
 	}
-	if (!(dev->bulk_in_endpointAddr && dev->bulk_out_endpointAddr)) {
-		err("Could not find both bulk-in and bulk-out endpoints");
+	if (!(dev->bulk_out_endpointAddr)) {
+		err("Could not find bulk-out endpoint");
 		goto error;
 	}
 
@@ -453,7 +422,6 @@ static void mydmx_draw_down(struct usb_mydmx *dev)
 	time = usb_wait_anchor_empty_timeout(&dev->submitted, 1000);
 	if (!time)
 		usb_kill_anchored_urbs(&dev->submitted);
-	usb_kill_urb(dev->bulk_in_urb);
 }
 
 static int mydmx_suspend(struct usb_interface *intf, pm_message_t message)
