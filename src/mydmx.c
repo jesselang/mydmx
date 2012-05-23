@@ -123,13 +123,13 @@ static int mydmx_open(struct inode *inode, struct file *file)
 				kref_put(&dev->kref, mydmx_delete);
 				goto exit;
 			}
-	} /* else { //uncomment this block if you want exclusive open
+	} else { // exclusive open.
 		retval = -EBUSY;
 		dev->open_count--;
 		mutex_unlock(&dev->io_mutex);
 		kref_put(&dev->kref, mydmx_delete);
 		goto exit;
-	} */
+	}
 	/* prevent the device from being autosuspended */
 
 	/* save our object in the file's private structure */
