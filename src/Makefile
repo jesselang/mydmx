@@ -1,10 +1,26 @@
-obj-m := mydmx.o
-KDIR := /lib/modules/$(shell uname -r)/build
-PWD := $(shell pwd)
+# Uncomment the following to enable debug.
+#DEBUG = y
 
-all:
-	$(MAKE) -C $(KDIR) M=$(PWD) modules
+ifeq ($(DEBUG),y)
+	DBGFLAGS = -O -g -DMYDMX_DEBUG
+else
+	DBGFLAGS = -O2
+endif
+
+CCFLAGS-Y += $(DBGFLAGS)
+
+
+ifneq ($(KERNELRELEASE),)
+	obj-m := mydmx.o
+
+else
+	KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+	PWD := $(shell pwd)
+
+default:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 
+endif
