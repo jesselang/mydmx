@@ -525,4 +525,6 @@ static void __exit usb_mydmx_exit(void)
 module_init(usb_mydmx_init);
 module_exit(usb_mydmx_exit);
 
+MODULE_DESCRIPTION("American DJ's MyDMX USB interface driver");
+MODULE_AUTHOR("Jesse Lang <jesse@jesselang.com>");
 MODULE_LICENSE("GPL");
