@@ -41,10 +41,7 @@ MODULE_DEVICE_TABLE(usb, mydmx_table);
 #define USB_MYDMX_MINOR_BASE	192
 
 /* our private defines. if this grows any larger, use your own .h file */
-#define MAX_TRANSFER		(PAGE_SIZE - 512)
-/* MAX_TRANSFER is chosen so that the VM is not stressed by
-   allocations > PAGE_SIZE and the number of packets in a page
-   is an integer 512 is the largest possible packet on EHCI */
+#define PACKET_SIZE		512
 #define WRITES_IN_FLIGHT	1
 /* only allow a single write at a time */
 
@@ -204,7 +201,7 @@ static ssize_t mydmx_write(struct file *file, const char *user_buffer,
 	int retval = 0;
 	struct urb *urb = NULL;
 	char *buf = NULL;
-	size_t writesize = min(count, (size_t)MAX_TRANSFER);
+	size_t writesize = min(count, (size_t)PACKET_SIZE);
 
 	dev = file->private_data;
 
