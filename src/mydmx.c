@@ -289,6 +289,10 @@ static ssize_t mydmx_write(struct file *file, const char *user_buffer,
 	 */
 	usb_free_urb(urb);
 
+	/* This 30 ms (0.03s) delay keeps the light from flickering and showing strange colors.
+         * This gives us an effective refresh rate of 33.333hz.
+         */
+	msleep(30);
 
 	return writesize;
 
