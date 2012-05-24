@@ -1,5 +1,5 @@
 /*
- * American DJ's MyDMX USB interface driver
+ * DAS (American DJ) MyDMX USB interface driver
  * Copyright (C) 2012 Jesse Lang <jesse@jesselang.com>
  *
  * derived from:
@@ -494,6 +494,6 @@ static void __exit usb_mydmx_exit(void)
 module_init(usb_mydmx_init);
 module_exit(usb_mydmx_exit);
 
-MODULE_DESCRIPTION("American DJ's MyDMX USB interface driver");
+MODULE_DESCRIPTION("DAS (American DJ) MyDMX USB interface driver");
 MODULE_AUTHOR("Jesse Lang <jesse@jesselang.com>");
 MODULE_LICENSE("GPL");
