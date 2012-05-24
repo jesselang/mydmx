@@ -208,8 +208,8 @@ static ssize_t mydmx_write(struct file *file, const char *user_buffer,
 
 	dev = file->private_data;
 
-	/* verify that we actually have some data to write */
-	if (count == 0)
+	/* verify that we have a valid size packet to write */
+	if (count != 512)
 		goto exit;
 
 	/*
