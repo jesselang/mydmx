@@ -45,8 +45,8 @@ MODULE_DEVICE_TABLE(usb, mydmx_table);
 /* MAX_TRANSFER is chosen so that the VM is not stressed by
    allocations > PAGE_SIZE and the number of packets in a page
    is an integer 512 is the largest possible packet on EHCI */
-#define WRITES_IN_FLIGHT	8
-/* arbitrarily chosen */
+#define WRITES_IN_FLIGHT	1
+/* only allow a single write at a time */
 
 /* Structure to hold all of our device specific stuff */
 struct usb_mydmx {
