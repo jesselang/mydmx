@@ -25,14 +25,13 @@
 #include <linux/mutex.h>
 
 
-/* Define these values to match your devices */
-#define USB_MYDMX_VENDOR_ID	0x6244
-#define USB_MYDMX_PRODUCT_ID	0x0301
+#define MYDMX_VENDOR_ID		0x6244
+#define MYDMX_PRODUCT_ID	0x0301
 
 /* table of devices that work with this driver */
 static const struct usb_device_id mydmx_table[] = {
-	{ USB_DEVICE(USB_MYDMX_VENDOR_ID, USB_MYDMX_PRODUCT_ID) },
-	{ }					/* Terminating entry */
+	{ USB_DEVICE(MYDMX_VENDOR_ID, MYDMX_PRODUCT_ID) },
+	{ }
 };
 MODULE_DEVICE_TABLE(usb, mydmx_table);
 
@@ -496,4 +495,5 @@ module_exit(usb_mydmx_exit);
 
 MODULE_DESCRIPTION("DAS (American DJ) MyDMX USB interface driver");
 MODULE_AUTHOR("Jesse Lang <jesse@jesselang.com>");
+MODULE_VERSION("v0.1");
 MODULE_LICENSE("GPL");
