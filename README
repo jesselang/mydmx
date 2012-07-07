@@ -1,0 +1,20 @@
+DAS (American DJ) MyDMX USB interface driver
+Copyright (C) 2012 Jesse Lang <jesse@jesselang.com>
+
+derived from:
+	USB Skeleton driver - 2.2
+	Copyright (C) 2001-2004 Greg Kroah-Hartman (greg@kroah.com)
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, version 2.
+
+--------------------------------------------------------------------
+
+I have an interest in driving DMX devices from Linux, and I had access to the interface, so I created this driver.
+
+I am looking for people who have the MyDMX interface and run Linux to test this driver. I am willing to submit it for inclusion in to the kernel.
+
+Thanks!
+
+Jesse
