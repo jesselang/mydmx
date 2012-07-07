@@ -381,7 +381,7 @@ static int mydmx_probe(struct usb_interface *interface,
 
 	/* let the user know what node this device is now attached to */
 	dev_info(&interface->dev,
-		 "MyDMX interface now attached to MyDMX-%d",
+		 "MyDMX interface now attached to mydmx%d",
 		 interface->minor);
 	return 0;
 
@@ -413,7 +413,7 @@ static void mydmx_disconnect(struct usb_interface *interface)
 	/* decrement our usage count */
 	kref_put(&dev->kref, mydmx_delete);
 
-	dev_info(&interface->dev, "MyDMX #%d now disconnected", minor);
+	dev_info(&interface->dev, "mydmx%d now disconnected", minor);
 }
 
 static void mydmx_draw_down(struct usb_mydmx *dev)
