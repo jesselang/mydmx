@@ -23,4 +23,7 @@ default:
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 
+.PHONY: default clean
+
 endif
+
