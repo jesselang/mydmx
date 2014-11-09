@@ -1,5 +1,5 @@
 DAS (American DJ) MyDMX USB interface driver
-Copyright (C) 2012 Jesse Lang <jesse@jesselang.com>
+Copyright (C) 2012-2014 Jesse Lang <jesse@jesselang.com>
 
 derived from:
 	USB Skeleton driver - 2.2

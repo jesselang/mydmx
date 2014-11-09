@@ -1,6 +1,6 @@
 /*
  * DAS (American DJ) MyDMX USB interface driver
- * Copyright (C) 2012 Jesse Lang <jesse@jesselang.com>
+ * Copyright (C) 2012-2014 Jesse Lang <jesse@jesselang.com>
  *
  * derived from:
  *
@@ -16,7 +16,6 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
-#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kref.h>
@@ -31,7 +30,7 @@
 /* table of devices that work with this driver */
 static const struct usb_device_id mydmx_table[] = {
 	{ USB_DEVICE(MYDMX_VENDOR_ID, MYDMX_PRODUCT_ID) },
-	{ }
+	{ }					/* Terminating entry */
 };
 MODULE_DEVICE_TABLE(usb, mydmx_table);
 
@@ -52,7 +51,6 @@ struct usb_mydmx {
 	struct usb_anchor	submitted;		/* in case we need to retract our submissions */
 	__u8			bulk_out_endpointAddr;	/* the address of the bulk out endpoint */
 	int			errors;			/* the last request tanked */
-	int			open_count;		/* count the number of openers */
 	spinlock_t		err_lock;		/* lock for errors */
 	struct kref		kref;
 	struct mutex		io_mutex;		/* synchronize I/O with disconnect */
@@ -81,7 +79,7 @@ static int mydmx_open(struct inode *inode, struct file *file)
 
 	interface = usb_find_interface(&mydmx_driver, subminor);
 	if (!interface) {
-		err("%s - error, can't find device for minor %d",
+		pr_err("%s - error, can't find device for minor %d",
 		     __func__, subminor);
 		retval = -ENODEV;
 		goto exit;
@@ -93,33 +91,15 @@ static int mydmx_open(struct inode *inode, struct file *file)
 		goto exit;
 	}
 
+	retval = usb_autopm_get_interface(interface);
+	if (retval)
+		goto exit;
+
 	/* increment our usage count for the device */
 	kref_get(&dev->kref);
 
-	/* lock the device to allow correctly handling errors
-	 * in resumption */
-	mutex_lock(&dev->io_mutex);
-
-	if (!dev->open_count++) {
-		retval = usb_autopm_get_interface(interface);
-			if (retval) {
-				dev->open_count--;
-				mutex_unlock(&dev->io_mutex);
-				kref_put(&dev->kref, mydmx_delete);
-				goto exit;
-			}
-	} else { // exclusive open.
-		retval = -EBUSY;
-		dev->open_count--;
-		mutex_unlock(&dev->io_mutex);
-		kref_put(&dev->kref, mydmx_delete);
-		goto exit;
-	}
-	/* prevent the device from being autosuspended */
-
 	/* save our object in the file's private structure */
 	file->private_data = dev;
-	mutex_unlock(&dev->io_mutex);
 
 exit:
 	return retval;
@@ -135,7 +115,7 @@ static int mydmx_release(struct inode *inode, struct file *file)
 
 	/* allow the device to be autosuspended */
 	mutex_lock(&dev->io_mutex);
-	if (!--dev->open_count && dev->interface)
+	if (dev->interface)
 		usb_autopm_put_interface(dev->interface);
 	mutex_unlock(&dev->io_mutex);
 
@@ -179,8 +159,9 @@ static void mydmx_write_bulk_callback(struct urb *urb)
 		if (!(urb->status == -ENOENT ||
 		    urb->status == -ECONNRESET ||
 		    urb->status == -ESHUTDOWN))
-			err("%s - nonzero write bulk status received: %d",
-			    __func__, urb->status);
+			dev_err(&dev->interface->dev,
+				"%s - nonzero write bulk status received: %d\n",
+				__func__, urb->status);
 
 		spin_lock(&dev->err_lock);
 		dev->errors = urb->status;
@@ -274,8 +255,9 @@ static ssize_t mydmx_write(struct file *file, const char *user_buffer,
 	retval = usb_submit_urb(urb, GFP_KERNEL);
 	mutex_unlock(&dev->io_mutex);
 	if (retval) {
-		err("%s - failed submitting write urb, error %d", __func__,
-		    retval);
+		dev_err(&dev->interface->dev,
+			"%s - failed submitting write urb, error %d\n",
+			__func__, retval);
 		goto error_unanchor;
 	}
 
@@ -337,7 +319,7 @@ static int mydmx_probe(struct usb_interface *interface,
 	/* allocate memory for our device state and initialize it */
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
-		err("Out of memory");
+		dev_err(&interface->dev, "Out of memory\n");
 		goto error;
 	}
 	kref_init(&dev->kref);
@@ -362,7 +344,8 @@ static int mydmx_probe(struct usb_interface *interface,
 		}
 	}
 	if (!(dev->bulk_out_endpointAddr)) {
-		err("Could not find bulk-out endpoint");
+		dev_err(&interface->dev,
+			"Could not find bulk-out endpoint\n");
 		goto error;
 	}
 
@@ -373,7 +356,8 @@ static int mydmx_probe(struct usb_interface *interface,
 	retval = usb_register_dev(interface, &mydmx_class);
 	if (retval) {
 		/* something prevented us from registering this driver */
-		err("Not able to get a minor for this device.");
+		dev_err(&interface->dev,
+			"Not able to get a minor for this device.\n");
 		usb_set_intfdata(interface, NULL);
 		goto error;
 	}
@@ -472,26 +456,7 @@ static struct usb_driver mydmx_driver = {
 	.supports_autosuspend = 1,
 };
 
-static int __init usb_mydmx_init(void)
-{
-	int result;
-
-	/* register this driver with the USB subsystem */
-	result = usb_register(&mydmx_driver);
-	if (result)
-		err("usb_register failed. Error number %d", result);
-
-	return result;
-}
-
-static void __exit usb_mydmx_exit(void)
-{
-	/* deregister this driver with the USB subsystem */
-	usb_deregister(&mydmx_driver);
-}
-
-module_init(usb_mydmx_init);
-module_exit(usb_mydmx_exit);
+module_usb_driver(mydmx_driver);
 
 MODULE_DESCRIPTION("DAS (American DJ) MyDMX USB interface driver");
 MODULE_AUTHOR("Jesse Lang <jesse@jesselang.com>");
